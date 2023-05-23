@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+        }
+
+        #typing-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        #typing-text {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        #input-field {
+            width: 300px;
+            height: 40px;
+            font-size: 16px;
+            padding: 5px;
+        }
+
+        #result-container {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+        }
+
+        #result-container div {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #result-container div h2 {
+            margin-bottom: 5px;
+        }
+
+        #result-container div span {
+            font-size: 18px;
+        }
+
+        #button-container {
+            margin-bottom: 20px;
+        }
+
+        #restart-button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #timer {
+            font-size: 24px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="typing-container">
+        <p id="typing-text"></p>
+        <input type="text" id="input-field" autofocus>
+    </div>
+    <div id="result-container">
+        <div>
+            <h2>Accuracy</h2>
+            <span id="accuracy">0%</span>
+        </div>
+        <div>
+            <h2>Words per Minute</h2>
+            <span id="wpm">wpm</span>
+        </div>
+        <div>
+            <h2>Characters per Minute</h2>
+            <span id="cpm">cpm</span>
+        </div>
+    </div>
+    <div id="button-container">
+        <button id="restart-button" disabled>Restart</button>
+    </div>
+    <div id="timer">Timer: <span id="time">0:00</span></div>
+
+    <script>
+        let correctCharacterCount = 0;
+        let wordCount = 0;
+
+        const typingTextElement = document.getElementById('typing-text');
+        const inputField = document.getElementById('input-field');
+        const accuracyElement = document.getElementById('accuracy');
+        const wpmElement = document.getElementById('wpm');
+        const cpmElement = document.getElementById('cpm');
+        const restartButton = document.getElementById('restart-button');
+        const timerElement = document.getElementById('time');
+
+        let textArray = [];
+        let currentTextIndex = 0;
+        let startTime = 0;
+        let endTime = 0;
+        let isStarted = false;
+        let timerInterval;
+
+        // Sample sentences for typing test
+        const sampleSentences = ["The magnificent oak tree stood tall and proud, its branches reaching towards the heavens, as if seeking the touch of the divine.",
+            "The relentless waves crashed against the rugged cliffs, creating a symphony of raw power and untamed beauty.",
+            "In the depths of the enchanted forest, a mysterious creature lurked, its eyes gleaming with ancient wisdom and untold secrets.",
+            "As the sun dipped below the horizon, painting the sky in hues of fiery orange and velvety purple, a sense of tranquility washed over the land.",
+            "The bustling city streets were alive with the rhythm of life, a vibrant tapestry woven with the dreams and aspirations of its inhabitants.",
+            "With every brushstroke, the artist breathed life into the canvas, capturing fleeting moments of beauty and eternalizing them for all to see.",
+            "The distant mountains stood as silent sentinels, their majestic peaks piercing the sky, reminding us of the grandeur and vastness of nature.",
+            "As the gentle raindrops fell, nature's symphony filled the air, accompanied by the sweet scent of earth and the promise of new beginnings.",
+            "In the depths of the ocean, a kaleidoscope of colors danced among coral reefs, revealing a hidden world teeming with life and wonder.",
+            "The old bookshop nestled in the heart of the town was a sanctuary for book lovers, its shelves lined with stories waiting to be discovered.",
+            "With each step, the hiker embraced the untamed wilderness, finding solace in the untouched landscapes and the serenity of the great outdoors.",
+            "The old wooden cabin stood weathered by time, its walls holding the echoes of laughter, tears, and the stories of generations past.",
+            "From the top of the ancient castle tower, the view stretched for miles, revealing a patchwork of fields, forests, and winding rivers.",
+            "The violinist's fingers danced across the strings, weaving a tapestry of melodies that resonated deep within the souls of those who listened.",
+            "In the midst of the bustling metropolis, a hidden garden bloomed with vibrant flowers, offering a sanctuary of peace amidst the chaos.",
+            "The full moon cast an ethereal glow over the landscape, bathing everything in a soft silver light that whispered of secrets and enchantment."
+        ];
+
+        function initialize() {
+            const randomIndex = Math.floor(Math.random() * sampleSentences.length);
+            const sampleText = sampleSentences[randomIndex];
+            textArray = sampleText.split('');
+            currentTextIndex = 0;
+            inputField.value = '';
+            inputField.disabled = false;
+            inputField.focus();
+            restartButton.disabled = true;
+            updateTypingText();
+            updateResult(0, 0, 0);
+            clearInterval(timerInterval);
+            timerElement.textContent = '0:00';
+        }
+
+        function updateTypingText() {
+            typingTextElement.innerHTML = textArray
+                .map((char, index) => {
+                    if (index === currentTextIndex) {
+                        return `<span class="current-char">${char}</span>`;
+                    } else {
+                        return char;
+                    }
+                })
+                .join('');
+        }
+
+        function updateResult(accuracy, wpm, cpm) {
+            accuracyElement.textContent = `${accuracy}%`;
+            wpmElement.textContent = wpm;
+            cpmElement.textContent = cpm;
+        }
+
+
+        function calculateAccuracy(correctCharacterCount, inputText) {
+            return ((correctCharacterCount / inputText.length) * 100).toFixed(2);
+        }
+
+
+        function calculateWPM(startTime, endTime, inputText) {
+            const timeElapsed = (endTime - startTime) / 60000; // Convert milliseconds to minutes
+            const wordCount = inputText.trim().split(/\s+/).length; // Update to split on any whitespace character sequence
+            return Math.round(wordCount / timeElapsed);
+        }
+
+        function calculateCPM(startTime, endTime, inputText) {
+            const timeElapsed = (endTime - startTime) / 60000; // Convert milliseconds to minutes
+            const characterCount = inputText.replace(/\s/g, '').length; // Update to remove all whitespace characters
+            return Math.round(characterCount / timeElapsed);
+        }
+
+
+        function handleInputChange(event) {
+            const inputText = event.target.value;
+            const currentText = textArray.slice(0, inputText.length).join('');
+
+            correctCharacterCount = 0;
+            wordCount = inputText.trim().split(' ').length;
+
+            for (let i = 0; i < inputText.length; i++) {
+                if (inputText[i] === textArray[i]) {
+                    correctCharacterCount++;
+                }
+            }
+
+            const accuracy = calculateAccuracy(correctCharacterCount, inputText);
+            const wpm = calculateWPM(startTime, endTime, inputText);
+            const cpm = calculateCPM(startTime, endTime, inputText);
+
+
+            if (currentText === inputText) {
+                currentTextIndex = inputText.length;
+                updateTypingText();
+            }
+
+            if (inputText.length === textArray.length) {
+                clearInterval(timerInterval);
+                endTime = Date.now();
+                inputField.disabled = true;
+                restartButton.disabled = false;
+            }
+
+            updateResult(accuracy, wpm, cpm);
+        }
+
+        function handleRestart() {
+            initialize();
+            handleStart();
+        }
+
+
+        inputField.addEventListener('input', handleInputChange);
+        restartButton.addEventListener('click', handleRestart);
+
+        function startTimer() {
+            let seconds = 0;
+            timerInterval = setInterval(() => {
+                seconds++;
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                timerElement.textContent = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function handleStart() {
+            isStarted = true;
+            startTimer();
+        }
+
+        initialize();
+        handleStart();
+    </script>
+</body>
+
+</html>
